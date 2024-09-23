@@ -60,6 +60,8 @@ function (setup::WarmBubbleSetup)(x, t, equations::CompressibleEulerEquations2D)
     # density
     rho = p / (R * T)
 
+    @show rho, T, p
+
     v1 = 20.0
     v2 = 0.0
     E = c_v * T + 0.5 * (v1^2 + v2^2)

@@ -7,7 +7,8 @@ using Trixi
 
 gamma = 1.4
 kappa = 0.5     # Scaling factor for the pressure.
-equations = PolytropicEulerEquations2D(gamma, kappa)
+epsilopn = 0.0001
+equations = PolytropicEulerEquationsPerturbed2D(gamma, kappa, epsilon)
 
 initial_condition = initial_condition_weak_blast_wave
 
@@ -32,6 +33,9 @@ function mapping(xi_, eta_)
 
     x = xi + 3 / 8 * (cos(0.5 * pi * (2 * xi - 3) / 3) *
                       cos(2 * pi * (2 * y - 3) / 3))
+
+    # x = xi
+    # y = eta
 
     return SVector(x, y)
 end
