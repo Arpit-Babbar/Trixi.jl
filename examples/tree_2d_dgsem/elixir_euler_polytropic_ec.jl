@@ -2,6 +2,8 @@
 using OrdinaryDiffEq
 using Trixi
 
+import Trixi: rhs!
+
 ###############################################################################
 # semidiscretization of the polytropic Euler equations
 
@@ -19,6 +21,9 @@ surface_and_volume_flux = flux_winters_etal
 solver = DGSEM(polydeg = 0, surface_flux = surface_and_volume_flux,
                volume_integral = VolumeIntegralFluxDifferencing(surface_and_volume_flux))
 
+coordinates_min = (0.0, 0.0)
+coordinates_max = (3.0, 3.0)
+
 # Create a uniformly refined mesh with periodic boundaries
 mesh = TreeMesh(coordinates_min, coordinates_max,
                 initial_refinement_level = 3,
@@ -33,7 +38,7 @@ semi = SemidiscretizationHyperbolic(mesh, equations, initial_condition, solver)
 ###############################################################################
 # ODE solvers, callbacks etc.
 
-tspan = (0.0, 0.002)
+tspan = (0.0, dt)
 ode = semidiscretize(semi, tspan)
 
 summary_callback = SummaryCallback()
@@ -61,6 +66,8 @@ callbacks = CallbackSet(summary_callback,
 sol = solve(ode,
             Euler(),
             # CarpenterKennedy2N54(williamson_condition = false),
-            dt = 1.0, # solve needs some value here but it will be overwritten by the stepsize_callback
+            dt = dt, # solve needs some value here but it will be overwritten by the stepsize_callback
             save_everystep = false, callback = callbacks);
 summary_callback() # print the timer summary
+
+return sol;

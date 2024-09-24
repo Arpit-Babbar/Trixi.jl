@@ -13,7 +13,7 @@ equations = PolytropicEulerEquationsPerturbed2D(gamma, kappa, epsilon)
 initial_condition = initial_condition_convergence_test
 
 volume_flux = flux_winters_etal
-solver = DGSEM(polydeg = 3, surface_flux = FluxHLL(min_max_speed_davis),
+solver = DGSEM(polydeg = 0, surface_flux = FluxHLL(min_max_speed_davis),
                volume_integral = VolumeIntegralFluxDifferencing(volume_flux))
 
 coordinates_min = (0.0, 0.0)
@@ -21,7 +21,7 @@ coordinates_max = (1.0, 1.0)
 
 # Create a uniformly refined mesh with periodic boundaries
 mesh = TreeMesh(coordinates_min, coordinates_max,
-                initial_refinement_level = 4,
+                initial_refinement_level = 1,
                 periodicity = true,
                 n_cells_max = 30_000)
 
@@ -58,7 +58,11 @@ callbacks = CallbackSet(summary_callback,
 ###############################################################################
 # run the simulation
 
-sol = solve(ode, CarpenterKennedy2N54(williamson_condition = false),
+sol = solve(ode,
+            # CarpenterKennedy2N54(williamson_condition = false),
+            Euler(),
             dt = 1.0, # solve needs some value here but it will be overwritten by the stepsize_callback
             save_everystep = false, callback = callbacks);
 summary_callback() # print the timer summary
+
+return sol
