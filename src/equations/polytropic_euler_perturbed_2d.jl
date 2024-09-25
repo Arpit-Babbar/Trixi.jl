@@ -54,6 +54,55 @@ function varnames(::typeof(cons2cons), ::PolytropicEulerEquationsPerturbed2D)
 end
 varnames(::typeof(cons2prim), ::PolytropicEulerEquationsPerturbed2D) = ("rho", "v1", "v2")
 
+
+@inline vortex_k(r) = 2*cos(r) + 2*r*sin(r) + 0.125*cos(2*r) + 0.25*r*sin(2*r) + 0.75*r^2
+
+function initial_condition_isentropic_vortex(x, t, equations::PolytropicEulerEquationsPerturbed2D)
+    @unpack epsilon, gamma = equations
+
+    p0 = cp = 2.0
+    cv = 1.0
+    theta = atheta = 1.0
+    R = 1.0
+
+    # manufactured initial condition from Samantara 2020
+    # domain must be set to [0, 1] x [0, 1]
+
+    x1 = x[1] - 0.6 * t
+    x2 = x[2]
+
+    xmin, xmax = 0.0, 1.0
+    dx = xmax - xmin
+    if x1 > xmax
+       y = x1 - dx*floor((x1+xmin)/dx)
+    elseif x1 < xmin
+       y = x1 + dx*floor((xmax-x1)/dx)
+    else
+       y = x1
+    end
+
+    x1 = y
+
+    Gamma = 1.5
+    omega = 4*pi
+    r = sqrt((x1 - 0.5)^2 + (x2 - 0.5)^2)
+    eta = epsilon * sqrt(110) / 0.6
+
+    if omega*r <= pi
+        rho = 110 + (Gamma * eta / omega)^2 * (vortex_k(omega*r) - vortex_k(pi))
+        v1 = 0.6 + Gamma * (1 + cos(omega*r))*(0.5 - x2)
+        v2 = Gamma * (1 + cos(omega*r))*(x1 - 0.5)
+    else
+        rho = 110.0
+        v1 = 0.6
+        v2 = 0.0
+    end
+
+    @assert rho > 0.0 rho,x,omega*r
+
+    return prim2cons(SVector(rho, v1, v2), equations)
+end
+
 """
     initial_condition_convergence_test(x, t, equations::PolytropicEulerEquationsPerturbed2D)
 

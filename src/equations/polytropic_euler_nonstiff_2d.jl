@@ -6,7 +6,7 @@
 #! format: noindent
 
 @doc raw"""
-    PolytropicEulerEquations2D(gamma, kappa)
+    PolytropicEulerEquationsPerturbed2D(gamma, kappa)
 
 The polytropic Euler equations
 ```math
@@ -37,77 +37,30 @@ p = \kappa\rho^\gamma
 ```
 the pressure, which we replaced using this relation.
 """
-struct PolytropicEulerEquations2D{RealT <: Real} <:
+struct PolytropicEulerEquationsNonStiff2D{RealT <: Real} <:
        AbstractPolytropicEulerEquations{2, 3}
     gamma::RealT               # ratio of specific heats
     kappa::RealT               # fluid scaling factor
+    epsilon::RealT
 
-    function PolytropicEulerEquations2D(gamma, kappa)
-        gamma_, kappa_ = promote(gamma, kappa)
-        new{typeof(gamma_)}(gamma_, kappa_)
+    function PolytropicEulerEquationsNonStiff2D(gamma, kappa, epsilon)
+        gamma_, kappa_, epsilon_ = promote(gamma, kappa, epsilon)
+        new{typeof(gamma_)}(gamma_, kappa_, epsilon_)
     end
 end
 
-function varnames(::typeof(cons2cons), ::PolytropicEulerEquations2D)
+function varnames(::typeof(cons2cons), ::PolytropicEulerEquationsNonStiff2D)
     ("rho", "rho_v1", "rho_v2")
 end
-varnames(::typeof(cons2prim), ::PolytropicEulerEquations2D) = ("rho", "v1", "v2")
-
-function initial_condition_isentropic_vortex(x, t, equations::PolytropicEulerEquations2D)
-    @unpack gamma = equations
-
-    epsilon = 1.0
-
-    p0 = cp = 2.0
-    cv = 1.0
-    theta = atheta = 1.0
-    R = 1.0
-
-    # manufactured initial condition from Samantara 2020
-    # domain must be set to [0, 1] x [0, 1]
-
-    x1 = x[1] - 0.6 * t
-    x2 = x[2]
-
-    xmin, xmax = 0.0, 1.0
-    dx = xmax - xmin
-    if x1 > xmax
-       y = x1 - dx*floor((x1+xmin)/dx)
-    elseif x1 < xmin
-       y = x1 + dx*floor((xmax-x1)/dx)
-    else
-       y = x1
-    end
-
-    x1 = y
-
-    Gamma = 1.5
-    omega = 4*pi
-    r = sqrt((x1 - 0.5)^2 + (x2 - 0.5)^2)
-    eta = epsilon * sqrt(110) / 0.6
-
-    if omega*r <= pi
-        rho = 110 + (Gamma * eta / omega)^2 * (vortex_k(omega*r) - vortex_k(pi))
-        v1 = 0.6 + Gamma * (1 + cos(omega*r))*(0.5 - x2)
-        v2 = Gamma * (1 + cos(omega*r))*(x1 - 0.5)
-    else
-        rho = 110.0
-        v1 = 0.6
-        v2 = 0.0
-    end
-
-    @assert rho > 0.0 rho,x,omega*r
-
-    return prim2cons(SVector(rho, v1, v2), equations)
-end
+varnames(::typeof(cons2prim), ::PolytropicEulerEquationsNonStiff2D) = ("rho", "v1", "v2")
 
 """
-    initial_condition_convergence_test(x, t, equations::PolytropicEulerEquations2D)
+    initial_condition_convergence_test(x, t, equations::PolytropicEulerEquationsPerturbed2D)
 
 Manufactured smooth initial condition used for convergence tests
 in combination with [`source_terms_convergence_test`](@ref).
 """
-function initial_condition_convergence_test(x, t, equations::PolytropicEulerEquations2D)
+function initial_condition_convergence_test(x, t, equations::PolytropicEulerEquationsNonStiff2D)
     # manufactured initial condition from Winters (2019) [0.1007/s10543-019-00789-w]
     # domain must be set to [0, 1] x [0, 1]
     h = 8 + cos(2 * pi * x[1]) * sin(2 * pi * x[2]) * cos(2 * pi * t)
@@ -116,13 +69,14 @@ function initial_condition_convergence_test(x, t, equations::PolytropicEulerEqua
 end
 
 """
-    source_terms_convergence_test(u, x, t, equations::PolytropicEulerEquations2D)
+    source_terms_convergence_test(u, x, t, equations::PolytropicEulerEquationsPerturbed2D)
 
 Source terms used for convergence tests in combination with
 [`initial_condition_convergence_test`](@ref).
 """
 @inline function source_terms_convergence_test(u, x, t,
-                                               equations::PolytropicEulerEquations2D)
+                                               equations::PolytropicEulerEquationsNonStiff2D)
+    @unpack epsilon = equations
     rho, v1, v2 = cons2prim(u, equations)
 
     # Residual from Winters (2019) [0.1007/s10543-019-00789-w] eq. (5.2).
@@ -134,7 +88,7 @@ Source terms used for convergence tests in combination with
     rho_x = h_x
     rho_y = h_y
 
-    b = equations.kappa * equations.gamma * h^(equations.gamma - 1)
+    b = equations.kappa * equations.gamma * h^(equations.gamma - 1) / epsilon^2
 
     r_1 = h_t + h_x / 2 + 3 / 2 * h_y
     r_2 = h_t / 2 + h_x / 4 + b * rho_x + 3 / 4 * h_y
@@ -144,14 +98,14 @@ Source terms used for convergence tests in combination with
 end
 
 """
-    initial_condition_weak_blast_wave(x, t, equations::PolytropicEulerEquations2D)
+    initial_condition_weak_blast_wave(x, t, equations::PolytropicEulerEquationsPerturbed2D)
 
 A weak blast wave adapted from
 - Sebastian Hennemann, Gregor J. Gassner (2020)
   A provably entropy stable subcell shock capturing approach for high order split form DG
   [arXiv: 2008.12044](https://arxiv.org/abs/2008.12044)
 """
-function initial_condition_weak_blast_wave(x, t, equations::PolytropicEulerEquations2D)
+function initial_condition_weak_blast_wave(x, t, equations::PolytropicEulerEquationsNonStiff2D)
     # Adapted MHD version of the weak blast wave from Hennemann & Gassner JCP paper 2020 (Sec. 6.3)
     # Set up polar coordinates
     inicenter = (0, 0)
@@ -171,41 +125,39 @@ end
 # Calculate 2D flux for a single point in the normal direction
 # Note, this directional vector is not normalized
 @inline function flux(u, normal_direction::AbstractVector,
-                      equations::PolytropicEulerEquations2D)
+                      equations::PolytropicEulerEquationsNonStiff2D)
     rho, v1, v2 = cons2prim(u, equations)
-    p = pressure(u, equations)
 
     v_normal = v1 * normal_direction[1] + v2 * normal_direction[2]
     rho_v_normal = rho * v_normal
-    f1 = rho_v_normal
-    f2 = rho_v_normal * v1 + p * normal_direction[1]
-    f3 = rho_v_normal * v2 + p * normal_direction[2]
+    f1 = 0.0
+    f2 = rho_v_normal * v1
+    f3 = rho_v_normal * v2
     return SVector(f1, f2, f3)
 end
 
 # Calculate 2D flux for a single point
-@inline function flux(u, orientation::Integer, equations::PolytropicEulerEquations2D)
+@inline function flux(u, orientation::Integer, equations::PolytropicEulerEquationsNonStiff2D)
     _, v1, v2 = cons2prim(u, equations)
-    p = pressure(u, equations)
 
     rho_v1 = u[2]
     rho_v2 = u[3]
 
     if orientation == 1
-        f1 = rho_v1
-        f2 = rho_v1 * v1 + p
+        f1 = 0.0
+        f2 = rho_v1 * v1
         f3 = rho_v1 * v2
     else
         f1 = rho_v2
         f2 = rho_v2 * v1
-        f3 = rho_v2 * v2 + p
+        f3 = rho_v2 * v2
     end
     return SVector(f1, f2, f3)
 end
 
 """
     flux_winters_etal(u_ll, u_rr, orientation_or_normal_direction,
-                      equations::PolytropicEulerEquations2D)
+                      equations::PolytropicEulerEquationsPerturbed2D)
 
 Entropy conserving two-point flux for isothermal or polytropic gases.
 Requires a special weighted Stolarsky mean for the evaluation of the density
@@ -219,12 +171,10 @@ For details see Section 3.2 of the following reference
   [DOI: 10.1007/s10543-019-00789-w](https://doi.org/10.1007/s10543-019-00789-w)
 """
 @inline function flux_winters_etal(u_ll, u_rr, normal_direction::AbstractVector,
-                                   equations::PolytropicEulerEquations2D)
+                                   equations::PolytropicEulerEquationsNonStiff2D)
     # Unpack left and right state
     rho_ll, v1_ll, v2_ll = cons2prim(u_ll, equations)
     rho_rr, v1_rr, v2_rr = cons2prim(u_rr, equations)
-    p_ll = equations.kappa * rho_ll^equations.gamma
-    p_rr = equations.kappa * rho_rr^equations.gamma
     v_dot_n_ll = v1_ll * normal_direction[1] + v2_ll * normal_direction[2]
     v_dot_n_rr = v1_rr * normal_direction[1] + v2_rr * normal_direction[2]
 
@@ -236,23 +186,21 @@ For details see Section 3.2 of the following reference
     end
     v1_avg = 0.5 * (v1_ll + v1_rr)
     v2_avg = 0.5 * (v2_ll + v2_rr)
-    p_avg = 0.5 * (p_ll + p_rr)
 
     # Calculate fluxes depending on normal_direction
-    f1 = rho_mean * 0.5 * (v_dot_n_ll + v_dot_n_rr)
-    f2 = f1 * v1_avg + p_avg * normal_direction[1]
-    f3 = f1 * v2_avg + p_avg * normal_direction[2]
+    f1 = 0.0
+    rho_v_avg = rho_mean * 0.5 * (v_dot_n_ll + v_dot_n_rr)
+    f2 = rho_v_avg * v1_avg
+    f3 = rho_v_avg * v2_avg
 
     return SVector(f1, f2, f3)
 end
 
 @inline function flux_winters_etal(u_ll, u_rr, orientation::Integer,
-                                   equations::PolytropicEulerEquations2D)
+                                   equations::PolytropicEulerEquationsNonStiff2D)
     # Unpack left and right state
     rho_ll, v1_ll, v2_ll = cons2prim(u_ll, equations)
     rho_rr, v1_rr, v2_rr = cons2prim(u_rr, equations)
-    p_ll = equations.kappa * rho_ll^equations.gamma
-    p_rr = equations.kappa * rho_rr^equations.gamma
 
     # Compute the necessary mean values
     if equations.gamma == 1.0 # isothermal gas
@@ -262,23 +210,24 @@ end
     end
     v1_avg = 0.5 * (v1_ll + v1_rr)
     v2_avg = 0.5 * (v2_ll + v2_rr)
-    p_avg = 0.5 * (p_ll + p_rr)
 
     if orientation == 1 # x-direction
-        f1 = rho_mean * 0.5 * (v1_ll + v1_rr)
-        f2 = f1 * v1_avg + p_avg
-        f3 = f1 * v2_avg
+        f1 = 0.0
+        rho_v_avg = rho_mean * 0.5 * (v1_ll + v1_rr)
+        f2 = rho_v_avg * v1_avg
+        f3 = rho_v_avg * v2_avg
     else # y-direction
-        f1 = rho_mean * 0.5 * (v2_ll + v2_rr)
-        f2 = f1 * v1_avg
-        f3 = f1 * v2_avg + p_avg
+        f1 = 0.0
+        rho_v_avg = rho_mean * 0.5 * (v2_ll + v2_rr)
+        f2 = rho_v_avg * v1_avg
+        f3 = rho_v_avg * v2_avg
     end
 
     return SVector(f1, f2, f3)
 end
 
 @inline function min_max_speed_naive(u_ll, u_rr, normal_direction::AbstractVector,
-                                     equations::PolytropicEulerEquations2D)
+                                     equations::PolytropicEulerEquationsNonStiff2D)
     rho_ll, v1_ll, v2_ll = cons2prim(u_ll, equations)
     rho_rr, v1_rr, v2_rr = cons2prim(u_rr, equations)
     p_ll = equations.kappa * rho_ll^equations.gamma
@@ -289,15 +238,15 @@ end
 
     norm_ = norm(normal_direction)
     # The v_normals are already scaled by the norm
-    lambda_min = v_normal_ll - sqrt(equations.gamma * p_ll / rho_ll) * norm_
-    lambda_max = v_normal_rr + sqrt(equations.gamma * p_rr / rho_rr) * norm_
+    lambda_min = v_normal_ll - sqrt(equations.gamma * p_ll / (rho_ll)) * norm_
+    lambda_max = v_normal_rr + sqrt(equations.gamma * p_rr / (rho_rr)) * norm_
 
     return lambda_min, lambda_max
 end
 
 # More refined estimates for minimum and maximum wave speeds for HLL-type fluxes
 @inline function min_max_speed_davis(u_ll, u_rr, orientation::Integer,
-                                     equations::PolytropicEulerEquations2D)
+                                     equations::PolytropicEulerEquationsNonStiff2D)
     rho_ll, v1_ll, v2_ll = cons2prim(u_ll, equations)
     rho_rr, v1_rr, v2_rr = cons2prim(u_rr, equations)
     # Pressure for polytropic Euler
@@ -320,7 +269,7 @@ end
 
 # More refined estimates for minimum and maximum wave speeds for HLL-type fluxes
 @inline function min_max_speed_davis(u_ll, u_rr, normal_direction::AbstractVector,
-                                     equations::PolytropicEulerEquations2D)
+                                     equations::PolytropicEulerEquationsNonStiff2D)
     rho_ll, v1_ll, v2_ll = cons2prim(u_ll, equations)
     rho_rr, v1_rr, v2_rr = cons2prim(u_rr, equations)
     # Pressure for polytropic Euler
@@ -342,7 +291,7 @@ end
     return λ_min, λ_max
 end
 
-@inline function max_abs_speeds(u, equations::PolytropicEulerEquations2D)
+@inline function max_abs_speeds(u, equations::PolytropicEulerEquationsNonStiff2D)
     rho, v1, v2 = cons2prim(u, equations)
     c = sqrt(equations.gamma * equations.kappa * rho^(equations.gamma - 1))
 
@@ -352,7 +301,7 @@ end
 # Calculate maximum wave speed for local Lax-Friedrichs-type dissipation as the
 # maximum velocity magnitude plus the maximum speed of sound
 @inline function max_abs_speed_naive(u_ll, u_rr, orientation::Integer,
-                                     equations::PolytropicEulerEquations2D)
+                                     equations::PolytropicEulerEquationsNonStiff2D)
     rho_ll, v1_ll, v2_ll = cons2prim(u_ll, equations)
     rho_rr, v1_rr, v2_rr = cons2prim(u_rr, equations)
 
@@ -372,7 +321,7 @@ end
 end
 
 @inline function max_abs_speed_naive(u_ll, u_rr, normal_direction::AbstractVector,
-                                     equations::PolytropicEulerEquations2D)
+                                     equations::PolytropicEulerEquationsNonStiff2D)
     rho_ll, v1_ll, v2_ll = cons2prim(u_ll, equations)
     rho_rr, v1_rr, v2_rr = cons2prim(u_rr, equations)
 
@@ -390,7 +339,7 @@ end
 end
 
 # Convert conservative variables to primitive
-@inline function cons2prim(u, equations::PolytropicEulerEquations2D)
+@inline function cons2prim(u, equations::PolytropicEulerEquationsNonStiff2D)
     rho, rho_v1, rho_v2 = u
 
     v1 = rho_v1 / rho
@@ -400,7 +349,8 @@ end
 end
 
 # Convert conservative variables to entropy
-@inline function cons2entropy(u, equations::PolytropicEulerEquations2D)
+@inline function cons2entropy(u, equations::PolytropicEulerEquationsNonStiff2D)
+    @unpack epsilon = equations
     rho, rho_v1, rho_v2 = u
 
     v1 = rho_v1 / rho
@@ -415,7 +365,7 @@ end
                           (equations.gamma - 1.0)
     end
 
-    w1 = internal_energy + p / rho - 0.5 * v_square
+    w1 = (internal_energy + p / rho) / epsilon^2 - 0.5 * v_square
     w2 = v1
     w3 = v2
 
@@ -423,19 +373,20 @@ end
 end
 
 # Convert primitive to conservative variables
-@inline function prim2cons(prim, equations::PolytropicEulerEquations2D)
+@inline function prim2cons(prim, equations::PolytropicEulerEquationsNonStiff2D)
     rho, v1, v2 = prim
     rho_v1 = rho * v1
     rho_v2 = rho * v2
     return SVector(rho, rho_v1, rho_v2)
 end
 
-@inline function density(u, equations::PolytropicEulerEquations2D)
+@inline function density(u, equations::PolytropicEulerEquationsNonStiff2D)
     rho = u[1]
     return rho
 end
+# TODO - Should we simply put the epsilon^2 in pressure instead?
 
-@inline function pressure(u, equations::PolytropicEulerEquations2D)
+@inline function pressure(u, equations::PolytropicEulerEquationsNonStiff2D)
     rho, rho_v1, rho_v2 = u
     p = equations.kappa * rho^equations.gamma
     return p

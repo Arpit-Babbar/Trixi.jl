@@ -1,3 +1,4 @@
+
 using OrdinaryDiffEq
 using Trixi
 
@@ -6,9 +7,9 @@ using Trixi
 
 gamma = 2.0   # Adiabatic monatomic gas in 2d.
 kappa = 0.5   # Scaling factor for the pressure.
-epsilon = 1.0
+epsilon = 0.01
 equations = PolytropicEulerEquationsPerturbed2D(gamma, kappa, epsilon)
-equations = PolytropicEulerEquations2D(gamma, kappa)
+# equations = PolytropicEulerEquations2D(gamma, kappa)
 
 # Linear pressure wave in the negative x-direction.
 function initial_condition_wave(x, t, equations::PolytropicEulerEquationsPerturbed2D)
@@ -25,9 +26,8 @@ end
 initial_condition = initial_condition_wave
 
 volume_flux = flux_winters_etal
-solver = DGSEM(polydeg = 0, surface_flux = flux_lax_friedrichs,
-            #    volume_integral = VolumeIntegralFluxDifferencing(volume_flux)
-               )
+solver = DGSEM(polydeg = 2, surface_flux = flux_hll,
+               volume_integral = VolumeIntegralFluxDifferencing(volume_flux))
 
 coordinates_min = (-2.0, -1.0)
 coordinates_max = (2.0, 1.0)
@@ -64,23 +64,17 @@ save_solution = SaveSolutionCallback(interval = 50,
                                      save_final_solution = true,
                                      solution_variables = cons2prim)
 
-stepsize_callback = StepsizeCallback(cfl = 0.5)
-
-visualization = VisualizationCallback(interval = 200)
+stepsize_callback = StepsizeCallback(cfl = 1.7)
 
 callbacks = CallbackSet(summary_callback,
                         analysis_callback, alive_callback,
                         save_solution,
-                        # visualization,
-                        stepsize_callback
-                        )
+                        stepsize_callback)
 
 ###############################################################################
 # run the simulation
 
-sol = solve(ode,
-            # CarpenterKennedy2N54(williamson_condition = false),
-            Euler(),
+sol = solve(ode, CarpenterKennedy2N54(williamson_condition = false),
             dt = 1.0, # solve needs some value here but it will be overwritten by the stepsize_callback
             save_everystep = false, callback = callbacks);
 

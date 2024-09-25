@@ -3,37 +3,42 @@ using OrdinaryDiffEq
 using Trixi
 
 ###############################################################################
-# semidiscretization of the compressible Euler equations
+# semidiscretization of the polytropic Euler equations
 
-equations = CompressibleEulerEquations2D(1.4)
+gamma = 1.4
+kappa = 0.5     # Scaling factor for the pressure.
+epsilon = 0.1
+equations = PolytropicEulerEquationsPerturbed2D(gamma, kappa, epsilon)
 
-initial_condition = initial_condition_convergence_test
+initial_condition = Trixi.initial_condition_isentropic_vortex
 
-surface_flux = flux_hllc
-
-basis = LobattoLegendreBasis(0)
-volume_integral = VolumeIntegralPureLGLFiniteVolume(flux_hllc)
-solver = DGSEM(basis, surface_flux, volume_integral)
+volume_flux = flux_winters_etal
+solver = DGSEM(polydeg = 3, surface_flux = flux_hll,
+               volume_integral = VolumeIntegralFluxDifferencing(volume_flux))
 
 coordinates_min = (0.0, 0.0)
-coordinates_max = (2.0, 2.0)
-mesh = TreeMesh(coordinates_min, coordinates_max,
-                initial_refinement_level = 0,
-                n_cells_max = 10_000)
+coordinates_max = (1.0, 1.0)
 
-semi = SemidiscretizationHyperbolic(mesh, equations, initial_condition, solver,
-                                    source_terms = source_terms_convergence_test)
+cells_per_dimension = (4, 4)
+
+mesh = StructuredMesh(cells_per_dimension,
+                      coordinates_min,
+                      coordinates_max)
+
+semi = SemidiscretizationHyperbolic(mesh, equations, initial_condition, solver)
 
 ###############################################################################
 # ODE solvers, callbacks etc.
 
-tspan = (0.0, 2.0)
+tspan = (0.0, 0.1)
 ode = semidiscretize(semi, tspan)
 
 summary_callback = SummaryCallback()
 
 analysis_interval = 100
-analysis_callback = AnalysisCallback(semi, interval = analysis_interval)
+analysis_callback = AnalysisCallback(semi, interval = analysis_interval,
+                                     extra_analysis_errors = (:l2_error_primitive,
+                                                              :linf_error_primitive))
 
 alive_callback = AliveCallback(analysis_interval = analysis_interval)
 
@@ -42,7 +47,7 @@ save_solution = SaveSolutionCallback(interval = 100,
                                      save_final_solution = true,
                                      solution_variables = cons2prim)
 
-stepsize_callback = StepsizeCallback(cfl = 0.5)
+stepsize_callback = StepsizeCallback(cfl = 0.1)
 
 callbacks = CallbackSet(summary_callback,
                         analysis_callback, alive_callback,
@@ -52,17 +57,7 @@ callbacks = CallbackSet(summary_callback,
 ###############################################################################
 # run the simulation
 
-sol = solve(ode,
-            # CarpenterKennedy2N54(williamson_condition = false),
-            Euler(),
+sol = solve(ode, CarpenterKennedy2N54(williamson_condition = false),
             dt = 1.0, # solve needs some value here but it will be overwritten by the stepsize_callback
             save_everystep = false, callback = callbacks);
-
-implicit_solver = Trixi.FullyImplicitSolver()
-
-sol_implicit = Trixi.implicit_solve(implicit_solver, deepcopy(sol), stepsize_callback, tspan, semi)
-
-analysis_callback(sol)
-analysis_callback(sol_implicit)
-
 summary_callback() # print the timer summary

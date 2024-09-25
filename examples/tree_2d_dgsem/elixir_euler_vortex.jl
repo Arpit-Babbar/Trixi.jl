@@ -49,12 +49,12 @@ function initial_condition_isentropic_vortex(x, t, equations::CompressibleEulerE
     return prim2cons(prim, equations)
 end
 initial_condition = initial_condition_isentropic_vortex
-solver = DGSEM(polydeg = 3, surface_flux = flux_lax_friedrichs)
+solver = DGSEM(polydeg = 0, surface_flux = flux_lax_friedrichs)
 
 coordinates_min = (-10.0, -10.0)
 coordinates_max = (10.0, 10.0)
 mesh = TreeMesh(coordinates_min, coordinates_max,
-                initial_refinement_level = 4,
+                initial_refinement_level = 3,
                 n_cells_max = 10_000)
 
 semi = SemidiscretizationHyperbolic(mesh, equations, initial_condition, solver)
@@ -82,7 +82,7 @@ save_solution = SaveSolutionCallback(interval = 100,
                                      save_final_solution = true,
                                      solution_variables = cons2prim)
 
-stepsize_callback = StepsizeCallback(cfl = 1.1)
+stepsize_callback = StepsizeCallback(cfl = 0.2)
 
 callbacks = CallbackSet(summary_callback,
                         analysis_callback, alive_callback,
@@ -95,4 +95,12 @@ callbacks = CallbackSet(summary_callback,
 sol = solve(ode, CarpenterKennedy2N54(williamson_condition = false),
             dt = 1.0, # solve needs some value here but it will be overwritten by the stepsize_callback
             save_everystep = false, callback = callbacks);
+
+implicit_solver = Trixi.FullyImplicitSolver()
+
+sol_implicit = Trixi.implicit_solve(implicit_solver, deepcopy(sol), stepsize_callback, tspan, semi)
+
+analysis_callback(sol)
+analysis_callback(sol_implicit)
+
 summary_callback() # print the timer summary

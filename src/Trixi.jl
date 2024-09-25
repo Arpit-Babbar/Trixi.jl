@@ -162,6 +162,7 @@ export AcousticPerturbationEquations2D,
        ShallowWaterEquationsQuasi1D,
        LinearizedEulerEquations1D, LinearizedEulerEquations2D, LinearizedEulerEquations3D,
        PolytropicEulerEquations2D, PolytropicEulerEquationsPerturbed2D,
+       PolytropicEulerEquationsStiff2D, PolytropicEulerEquationsNonStiff2D,
        TrafficFlowLWREquations1D
 
 export LaplaceDiffusion1D, LaplaceDiffusion2D, LaplaceDiffusion3D,
@@ -230,6 +231,7 @@ export TreeMesh, StructuredMesh, StructuredMeshView, UnstructuredMesh2D, P4estMe
 
 export DG,
        DGSEM, LobattoLegendreBasis,
+       IMEX111, FullyImplicitSolver,
        FDSBP,
        VolumeIntegralWeakForm, VolumeIntegralStrongForm,
        VolumeIntegralFluxDifferencing,
