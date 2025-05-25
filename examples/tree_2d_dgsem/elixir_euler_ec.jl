@@ -1,5 +1,4 @@
-
-using OrdinaryDiffEq
+using OrdinaryDiffEqSSPRK, OrdinaryDiffEqLowStorageRK
 using Trixi
 using Random: seed!
 ###############################################################################
@@ -67,15 +66,6 @@ callbacks = CallbackSet(summary_callback,
 ###############################################################################
 # run the simulation
 
-# Create modal filter and filter initial condition
-modal_filter = ModalFilter(solver; polydeg_cutoff = 3,
-                           cons2filter = cons2prim, filter2cons = prim2cons)
-modal_filter(ode.u0, semi)
-
-# sol = solve(ode, CarpenterKennedy2N54(; williamson_condition = false),
-sol = solve(ode,
-            CarpenterKennedy2N54(; stage_limiter! = modal_filter,
-                                 williamson_condition = false),
+sol = solve(ode, CarpenterKennedy2N54(williamson_condition = false);
             dt = 1.0, # solve needs some value here but it will be overwritten by the stepsize_callback
-            save_everystep = false, callback = callbacks);
-summary_callback() # print the timer summary
+            ode_default_options()..., callback = callbacks);

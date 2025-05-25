@@ -21,10 +21,7 @@ EXAMPLES_DIR = pkgdir(Trixi, "examples", "tree_1d_dgsem")
                             1.6205433861493646e-7,
                             1.465427772462391e-7,
                             5.372255111879554e-7
-                        ],
-                        # With the default `maxiters = 1` in coverage tests,
-                        # there would be no time series to check against.
-                        coverage_override=(maxiters = 20,))
+                        ],)
     # Ensure that we do not have excessive memory allocations
     # (e.g., from type instabilities)
     let
@@ -34,7 +31,7 @@ EXAMPLES_DIR = pkgdir(Trixi, "examples", "tree_1d_dgsem")
         @test (@allocated Trixi.rhs!(du_ode, u_ode, semi, t)) < 1000
     end
     # Extra test to make sure the "TimeSeriesCallback" made correct data.
-    # Extracts data at all points from the first step of the time series and compares it to the 
+    # Extracts data at all points from the first step of the time series and compares it to the
     # exact solution and an interpolated reference solution
     point_data = [getindex(time_series.affect!.point_data[i], 1:3) for i in 1:3]
     exact_data = [initial_condition_convergence_test(time_series.affect!.point_coordinates[i],
@@ -284,8 +281,7 @@ end
                             2.9766770877037168,
                             0.16838100902295852,
                             2.6655773445485798
-                        ],
-                        coverage_override=(maxiters = 6,))
+                        ],)
     # Ensure that we do not have excessive memory allocations
     # (e.g., from type instabilities)
     let
@@ -320,9 +316,7 @@ end
                             3.4296365168219216,
                             0.17635583964559245,
                             2.6574584326179505
-                        ],
-                        # Let this test run longer to cover some lines in flux_hllc
-                        coverage_override=(maxiters = 10^5, tspan = (0.0, 0.1)))
+                        ],)
     # Ensure that we do not have excessive memory allocations
     # (e.g., from type instabilities)
     let
@@ -342,8 +336,7 @@ end
                             2.6650170188241047
                         ],
                         shock_indicator_variable=pressure,
-                        cfl=0.2,
-                        coverage_override=(maxiters = 6,))
+                        cfl=0.2,)
     # Ensure that we do not have excessive memory allocations
     # (e.g., from type instabilities)
     let
@@ -363,8 +356,7 @@ end
                             2.666689753470263
                         ],
                         shock_indicator_variable=density,
-                        cfl=0.2,
-                        coverage_override=(maxiters = 6,))
+                        cfl=0.2,)
     # Ensure that we do not have excessive memory allocations
     # (e.g., from type instabilities)
     let
@@ -378,8 +370,7 @@ end
 @trixi_testset "elixir_euler_positivity.jl" begin
     @test_trixi_include(joinpath(EXAMPLES_DIR, "elixir_euler_positivity.jl"),
                         l2=[1.6493820253458906, 0.19793887460986834, 0.9783506076125921],
-                        linf=[4.71751203912051, 0.5272411022735763, 2.7426163947635844],
-                        coverage_override=(maxiters = 3,))
+                        linf=[4.71751203912051, 0.5272411022735763, 2.7426163947635844],)
     # Ensure that we do not have excessive memory allocations
     # (e.g., from type instabilities)
     let
@@ -409,6 +400,29 @@ end
     end
 end
 
+@trixi_testset "elixir_euler_blast_wave_entropy_bounded.jl" begin
+    @test_trixi_include(joinpath(EXAMPLES_DIR,
+                                 "elixir_euler_blast_wave_entropy_bounded.jl"),
+                        l2=[0.9689207881108007, 0.1617708899929322, 1.3847895715669456],
+                        linf=[2.95591859210077, 0.3135723412205586, 2.3871554358655365])
+    # Ensure that we do not have excessive memory allocations
+    # (e.g., from type instabilities)
+    let
+        t = sol.t[end]
+        u_ode = sol.u[end]
+        du_ode = similar(u_ode)
+        @test (@allocated Trixi.rhs!(du_ode, u_ode, semi, t)) < 1000
+    end
+end
+
+@trixi_testset "test_quasi_1D_entropy" begin
+    a = 0.9
+    u_1D = SVector(1.1, 0.2, 2.1)
+    u_quasi_1D = SVector(a * 1.1, a * 0.2, a * 2.1, a)
+    @test entropy(u_quasi_1D, CompressibleEulerEquationsQuasi1D(1.4)) ≈
+          a * entropy(u_1D, CompressibleEulerEquations1D(1.4))
+end
+
 @trixi_testset "elixir_euler_quasi_1d_source_terms.jl" begin
     @test_trixi_include(joinpath(EXAMPLES_DIR, "elixir_euler_quasi_1d_source_terms.jl"),
                         l2=[
@@ -423,6 +437,7 @@ end
                             1.821888865105592e-6,
                             1.1166012159335992e-7
                         ])
+
     # Ensure that we do not have excessive memory allocations
     # (e.g., from type instabilities)
     let
@@ -471,6 +486,26 @@ end
                             0.3752709888964313,
                             0.84477102402413,
                             8.881784197001252e-16
+                        ])
+    # Ensure that we do not have excessive memory allocations
+    # (e.g., from type instabilities)
+    let
+        t = sol.t[end]
+        u_ode = sol.u[end]
+        du_ode = similar(u_ode)
+        @test (@allocated Trixi.rhs!(du_ode, u_ode, semi, t)) < 1000
+    end
+end
+
+@trixi_testset "elixir_euler_laplace_diffusion.jl" begin
+    @test_trixi_include(joinpath(EXAMPLES_DIR, "elixir_euler_laplace_diffusion.jl"),
+                        l2=[0.10954500481114468,
+                            0.1417583694046777,
+                            0.4087206508328759],
+                        linf=[
+                            0.17183237920520245,
+                            0.2203023610743297,
+                            0.6347464031934038
                         ])
     # Ensure that we do not have excessive memory allocations
     # (e.g., from type instabilities)

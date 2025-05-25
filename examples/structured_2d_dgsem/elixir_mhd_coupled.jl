@@ -1,4 +1,4 @@
-using OrdinaryDiffEq
+using OrdinaryDiffEqSSPRK, OrdinaryDiffEqLowStorageRK
 using Trixi
 
 ###############################################################################
@@ -31,14 +31,6 @@ equations = IdealGlmMhdEquations2D(gamma)
 
 cells_per_dimension = (32, 64)
 
-# Extend the definition of the non-conservative Powell flux functions.
-import Trixi.flux_nonconservative_powell
-function flux_nonconservative_powell(u_ll, u_rr,
-                                     normal_direction_ll::AbstractVector,
-                                     equations::IdealGlmMhdEquations2D)
-    flux_nonconservative_powell(u_ll, u_rr, normal_direction_ll, normal_direction_ll,
-                                equations)
-end
 volume_flux = (flux_hindenlang_gassner, flux_nonconservative_powell)
 solver = DGSEM(polydeg = 3,
                surface_flux = (flux_lax_friedrichs, flux_nonconservative_powell),
@@ -130,7 +122,6 @@ callbacks = CallbackSet(summary_callback,
 ###############################################################################
 # run the simulation
 
-sol = solve(ode, CarpenterKennedy2N54(williamson_condition = false),
+sol = solve(ode, CarpenterKennedy2N54(williamson_condition = false);
             dt = 0.01, # solve needs some value here but it will be overwritten by the stepsize_callback
-            save_everystep = false, callback = callbacks);
-summary_callback() # print the timer summary
+            ode_default_options()..., callback = callbacks);

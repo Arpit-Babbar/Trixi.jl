@@ -8,7 +8,8 @@
 function save_solution_file(u, time, dt, timestep,
                             mesh::Union{SerialTreeMesh, StructuredMesh,
                                         StructuredMeshView,
-                                        UnstructuredMesh2D, SerialP4estMesh,
+                                        UnstructuredMesh2D,
+                                        SerialP4estMesh, P4estMeshView,
                                         SerialT8codeMesh},
                             equations, dg::DG, cache,
                             solution_callback,
@@ -19,10 +20,10 @@ function save_solution_file(u, time, dt, timestep,
 
     # Filename based on current time step
     if isempty(system)
-        filename = joinpath(output_directory, @sprintf("solution_%06d.h5", timestep))
+        filename = joinpath(output_directory, @sprintf("solution_%09d.h5", timestep))
     else
         filename = joinpath(output_directory,
-                            @sprintf("solution_%s_%06d.h5", system, timestep))
+                            @sprintf("solution_%s_%09d.h5", system, timestep))
     end
 
     # Convert to different set of variables if requested
@@ -91,7 +92,8 @@ function save_solution_file(u, time, dt, timestep,
 end
 
 function save_solution_file(u, time, dt, timestep,
-                            mesh::Union{ParallelTreeMesh, ParallelP4estMesh}, equations,
+                            mesh::Union{ParallelTreeMesh, ParallelP4estMesh,
+                                        ParallelT8codeMesh}, equations,
                             dg::DG, cache,
                             solution_callback,
                             element_variables = Dict{Symbol, Any}(),
@@ -101,10 +103,10 @@ function save_solution_file(u, time, dt, timestep,
 
     # Filename based on current time step
     if isempty(system)
-        filename = joinpath(output_directory, @sprintf("solution_%06d.h5", timestep))
+        filename = joinpath(output_directory, @sprintf("solution_%09d.h5", timestep))
     else
         filename = joinpath(output_directory,
-                            @sprintf("solution_%s_%06d.h5", system, timestep))
+                            @sprintf("solution_%s_%09d.h5", system, timestep))
     end
 
     # Convert to different set of variables if requested
@@ -136,7 +138,8 @@ function save_solution_file(u, time, dt, timestep,
 end
 
 function save_solution_file_parallel(data, time, dt, timestep, n_vars,
-                                     mesh::Union{ParallelTreeMesh, ParallelP4estMesh},
+                                     mesh::Union{ParallelTreeMesh, ParallelP4estMesh,
+                                                 ParallelT8codeMesh},
                                      equations, dg::DG, cache,
                                      solution_variables, filename,
                                      element_variables = Dict{Symbol, Any}())
@@ -158,7 +161,7 @@ function save_solution_file_parallel(data, time, dt, timestep, n_vars,
         attributes(file)["equations"] = get_name(equations)
         attributes(file)["polydeg"] = polydeg(dg)
         attributes(file)["n_vars"] = n_vars
-        attributes(file)["n_elements"] = nelementsglobal(dg, cache)
+        attributes(file)["n_elements"] = nelementsglobal(mesh, dg, cache)
         attributes(file)["mesh_type"] = get_name(mesh)
         attributes(file)["mesh_file"] = splitdir(mesh.current_filename)[2]
         attributes(file)["time"] = convert(Float64, time) # Ensure that `time` is written as a double precision scalar
@@ -183,7 +186,7 @@ function save_solution_file_parallel(data, time, dt, timestep, n_vars,
             # Need to create dataset explicitly in parallel case
             var = create_dataset(file, "/element_variables_$v",
                                  datatype(eltype(element_variable)),
-                                 dataspace((nelementsglobal(dg, cache),)))
+                                 dataspace((nelementsglobal(mesh, dg, cache),)))
 
             # Write data of each process in slices (ranks start with 0)
             slice = (cum_element_counts[mpi_rank() + 1] + 1):cum_element_counts[mpi_rank() + 2]
@@ -198,7 +201,8 @@ function save_solution_file_parallel(data, time, dt, timestep, n_vars,
 end
 
 function save_solution_file_on_root(data, time, dt, timestep, n_vars,
-                                    mesh::Union{ParallelTreeMesh, ParallelP4estMesh},
+                                    mesh::Union{ParallelTreeMesh, ParallelP4estMesh,
+                                                ParallelT8codeMesh},
                                     equations, dg::DG, cache,
                                     solution_variables, filename,
                                     element_variables = Dict{Symbol, Any}())
@@ -230,7 +234,7 @@ function save_solution_file_on_root(data, time, dt, timestep, n_vars,
         attributes(file)["equations"] = get_name(equations)
         attributes(file)["polydeg"] = polydeg(dg)
         attributes(file)["n_vars"] = n_vars
-        attributes(file)["n_elements"] = nelementsglobal(dg, cache)
+        attributes(file)["n_elements"] = nelementsglobal(mesh, dg, cache)
         attributes(file)["mesh_type"] = get_name(mesh)
         attributes(file)["mesh_file"] = splitdir(mesh.current_filename)[2]
         attributes(file)["time"] = convert(Float64, time) # Ensure that `time` is written as a double precision scalar

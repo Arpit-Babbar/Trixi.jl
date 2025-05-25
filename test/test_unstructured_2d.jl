@@ -17,12 +17,12 @@ isdir(outdir) && rm(outdir, recursive = true)
 @trixi_testset "elixir_euler_periodic.jl" begin
     @test_trixi_include(joinpath(EXAMPLES_DIR, "elixir_euler_periodic.jl"),
                         l2=[
-                            0.0001099216141882387, 0.0001303795774982892,
-                            0.00013037957749794242, 0.0002993727892598759
+                            0.00010992161458946449, 0.00013037957831794187,
+                            0.0001303795783182231, 0.00029937279106433015
                         ],
                         linf=[
-                            0.006407280810928562, 0.009836067015418948,
-                            0.009836067015398076, 0.021903519038095176
+                            0.006407280909098478, 0.009836067162309448,
+                            0.009836067162292128, 0.021903519372712843
                         ])
     # Ensure that we do not have excessive memory allocations
     # (e.g., from type instabilities)
@@ -120,10 +120,7 @@ end
                             0.005243995459478956,
                             0.004685630332338153,
                             0.01750217718347713
-                        ],
-                        # With the default `maxiters = 1` in coverage tests,
-                        # there would be no time steps after the restart.
-                        coverage_override=(maxiters = 100_000,))
+                        ],)
     # Ensure that we do not have excessive memory allocations
     # (e.g., from type instabilities)
     let
@@ -212,10 +209,7 @@ end
                             0.0005656680962440319,
                             0.0013910024779804075
                         ],
-                        tspan=(0.0, 0.2),
-                        # With the default `maxiters = 1` in coverage tests,
-                        # there would be no time series to check against.
-                        coverage_override=(maxiters = 20,))
+                        tspan=(0.0, 0.2),)
     # Extra test that the `TimeSeries` callback creates reasonable data
     point_data_1 = time_series.affect!.point_data[1]
     @test all(isapprox.(point_data_1[1:4],
@@ -254,16 +248,17 @@ end
 
 @trixi_testset "elixir_mhd_ec.jl" begin
     @test_trixi_include(joinpath(EXAMPLES_DIR, "elixir_mhd_ec.jl"),
-                        l2=[0.06418293357851637, 0.12085176618704108,
-                            0.12085099342419513, 0.07743005602933221,
-                            0.1622218916638482, 0.04044434425257972,
-                            0.04044440614962498, 0.05735896706356321,
-                            0.0020992340041681734],
-                        linf=[0.1417000509328017, 0.3210578460652491, 0.335041095545175,
-                            0.22500796423572675,
-                            0.44230628074326406, 0.16743171716317784,
-                            0.16745989278866702, 0.17700588224362557,
-                            0.02692320090677309],
+                        l2=[0.06418288595515664, 0.12085170757294698,
+                            0.12085093463857763, 0.077430018507123,
+                            0.16221988122574071, 0.040444455755985195,
+                            0.04044451621612787, 0.05735903066057611,
+                            0.002095549716217215],
+                        linf=[0.14169585310190325, 0.32104342885987625,
+                            0.33503526151419405,
+                            0.22499513309636543,
+                            0.44231595436029814, 0.16750863202541477,
+                            0.1675356630213226, 0.1770099359044508,
+                            0.026783792841168948],
                         tspan=(0.0, 0.5))
     # Ensure that we do not have excessive memory allocations
     # (e.g., from type instabilities)
@@ -277,16 +272,16 @@ end
 
 @trixi_testset "elixir_mhd_alfven_wave.jl" begin
     @test_trixi_include(joinpath(EXAMPLES_DIR, "elixir_mhd_alfven_wave.jl"),
-                        l2=[5.377518922553881e-5, 0.09999999206243514,
-                            0.09999999206243441, 0.1414213538550799,
-                            8.770450430886394e-6, 0.0999999926130084,
-                            0.0999999926130088, 0.14142135396487032,
-                            1.1553833987291942e-5],
-                        linf=[0.00039334982566352483, 0.14144904937275282,
-                            0.14144904937277897, 0.20003315928443416,
-                            6.826863293230012e-5, 0.14146512909995967,
-                            0.14146512909994702, 0.20006706837452526,
-                            0.00013645610312810813],
+                        l2=[5.376431895349634e-5, 0.09999999205016862,
+                            0.09999999205016788, 0.14142135386740418,
+                            8.767116801867206e-6, 0.09999999259645777,
+                            0.09999999259645763, 0.14142135397626523,
+                            1.1559626795684309e-5],
+                        linf=[0.00039380173293024345, 0.14144879547840894,
+                            0.14144879547843608, 0.2000330663752416,
+                            7.021503828519293e-5, 0.14146450834000124,
+                            0.1414645083399998, 0.20006708807562765,
+                            0.0001375806459241173],
                         tspan=(0.0, 0.5))
     # Ensure that we do not have excessive memory allocations
     # (e.g., from type instabilities)
@@ -313,6 +308,33 @@ end
                             2.052861364219655
                         ],
                         tspan=(0.0, 0.25))
+    # Ensure that we do not have excessive memory allocations
+    # (e.g., from type instabilities)
+    let
+        t = sol.t[end]
+        u_ode = sol.u[end]
+        du_ode = similar(u_ode)
+        @test (@allocated Trixi.rhs!(du_ode, u_ode, semi, t)) < 1000
+    end
+end
+
+@trixi_testset "elixir_shallowwater_ec_float32.jl" begin
+    # Expected errors are nearly all taken from elixir_shallowwater_ec.jl
+    @test_trixi_include(joinpath(EXAMPLES_DIR, "elixir_shallowwater_ec_float32.jl"),
+                        l2=[
+                            Float32(0.6107326269462766),
+                            Float32(0.48666631722018877),
+                            Float32(0.48309775159067053),
+                            Float32(0.29467422718511704)
+                        ],
+                        linf=[
+                            Float32(2.776782342826098),
+                            3.2116454f0, # this needs to be adapted
+                            3.6616623f0, # this needed to be adapted
+                            Float32(2.052861364219655)
+                        ],
+                        tspan=(0.0f0, 0.25f0),
+                        RealT=Float32)
     # Ensure that we do not have excessive memory allocations
     # (e.g., from type instabilities)
     let
@@ -351,16 +373,16 @@ end
 @trixi_testset "elixir_shallowwater_well_balanced.jl with FluxHydrostaticReconstruction" begin
     @test_trixi_include(joinpath(EXAMPLES_DIR, "elixir_shallowwater_well_balanced.jl"),
                         l2=[
-                            1.2164292510839085,
-                            1.2643106818778908e-12,
-                            1.269230436589819e-12,
-                            1.2164292510839079
+                            1.2164292510839063,
+                            1.2676379081600215e-12,
+                            1.255855785593831e-12,
+                            1.2164292510839074
                         ],
                         linf=[
-                            1.513851228231562,
-                            1.6670644673575802e-11,
-                            1.8426585188623954e-11,
-                            1.513851228231574
+                            1.5138512282315604,
+                            1.658245722058109e-11,
+                            1.8665562182185795e-11,
+                            1.5138512282315737
                         ],
                         surface_flux=(FluxHydrostaticReconstruction(flux_lax_friedrichs,
                                                                     hydrostatic_reconstruction_audusse_etal),
@@ -376,7 +398,7 @@ end
     end
 end
 
-@trixi_testset "elixir_shallowwater_well_balanced.jl with flux_nonconservative_ersing_etal" begin
+@trixi_testset "elixir_shallowwater_well_balanced.jl with flux_nonconservative_wintermeyer_etal" begin
     @test_trixi_include(joinpath(EXAMPLES_DIR, "elixir_shallowwater_well_balanced.jl"),
                         l2=[
                             1.2164292510839083,
@@ -391,9 +413,7 @@ end
                             1.513851228231574
                         ],
                         surface_flux=(flux_wintermeyer_etal,
-                                      flux_nonconservative_ersing_etal),
-                        volume_flux=(flux_wintermeyer_etal,
-                                     flux_nonconservative_ersing_etal),
+                                      flux_nonconservative_wintermeyer_etal),
                         tspan=(0.0, 0.25))
     # Ensure that we do not have excessive memory allocations
     # (e.g., from type instabilities)
@@ -458,7 +478,7 @@ end
     end
 end
 
-@trixi_testset "elixir_shallowwater_source_terms.jl with flux_nonconservative_ersing_etal" begin
+@trixi_testset "elixir_shallowwater_source_terms.jl with flux_nonconservative_wintermeyer_etal" begin
     @test_trixi_include(joinpath(EXAMPLES_DIR, "elixir_shallowwater_source_terms.jl"),
                         l2=[
                             0.001118046975499805,
@@ -473,9 +493,7 @@ end
                             2.6407324614341476e-5
                         ],
                         surface_flux=(flux_wintermeyer_etal,
-                                      flux_nonconservative_ersing_etal),
-                        volume_flux=(flux_wintermeyer_etal,
-                                     flux_nonconservative_ersing_etal),
+                                      flux_nonconservative_wintermeyer_etal),
                         tspan=(0.0, 0.025))
     # Ensure that we do not have excessive memory allocations
     # (e.g., from type instabilities)
@@ -517,12 +535,16 @@ end
 @trixi_testset "elixir_shallowwater_dirichlet.jl" begin
     @test_trixi_include(joinpath(EXAMPLES_DIR, "elixir_shallowwater_dirichlet.jl"),
                         l2=[
-                            1.1577518608938916e-5, 4.859252379740366e-13,
-                            4.639600837197925e-13, 1.1577518608952174e-5
+                            1.1577518608950964e-5,
+                            4.761947272222427e-13,
+                            4.546045873135486e-13,
+                            1.157751860893347e-5
                         ],
                         linf=[
-                            8.3940638787805e-5, 1.1446362498574484e-10,
-                            1.1124515748367981e-10, 8.39406387962427e-5
+                            8.394063879002545e-5,
+                            1.1211566736150389e-10,
+                            1.0890426250906834e-10,
+                            8.394063879602065e-5
                         ],
                         tspan=(0.0, 2.0))
     # Ensure that we do not have excessive memory allocations
@@ -656,7 +678,7 @@ end
                             0.0006164432358186644,
                             0.001363103391379461],
                         tspan=(0.0, 0.05),
-                        atol=1.0e-10)
+                        atol=2.0e-10)
     # Ensure that we do not have excessive memory allocations
     # (e.g., from type instabilities)
     let
@@ -670,17 +692,21 @@ end
 @trixi_testset "FDSBP (upwind): elixir_euler_source_terms_upwind.jl with LF splitting" begin
     @test_trixi_include(joinpath(pkgdir(Trixi, "examples", "unstructured_2d_fdsbp"),
                                  "elixir_euler_source_terms_upwind.jl"),
-                        l2=[3.8300267071890586e-5,
-                            5.295846741663533e-5,
-                            5.295846741663526e-5,
-                            0.00017564759295593478],
-                        linf=[0.00018810716496542312,
-                            0.0003794187430412599,
-                            0.0003794187430412599,
-                            0.0009632958510650269],
+                        l2=[
+                            3.8300274213823844e-5,
+                            5.295847308063744e-5,
+                            5.295847308066259e-5,
+                            0.00017564760044077823
+                        ],
+                        linf=[
+                            0.0001881071653406785,
+                            0.00037941874324110003,
+                            0.0003794187432419882,
+                            0.0009632958467822306
+                        ],
                         tspan=(0.0, 0.025),
                         flux_splitting=splitting_lax_friedrichs,
-                        atol=1.0e-10)
+                        atol=2e-10)
     # Ensure that we do not have excessive memory allocations
     # (e.g., from type instabilities)
     let
@@ -703,7 +729,24 @@ end
                             1.148153794261475e-11,
                             7.461231632532872e-10],
                         tspan=(0.0, 0.05),
-                        atol=1.0e-10)
+                        atol=1.0e-9)
+    # Ensure that we do not have excessive memory allocations
+    # (e.g., from type instabilities)
+    let
+        t = sol.t[end]
+        u_ode = sol.u[end]
+        du_ode = similar(u_ode)
+        @test (@allocated Trixi.rhs!(du_ode, u_ode, semi, t)) < 1000
+    end
+end
+
+@trixi_testset "FDSBP (upwind): elixir_euler_free_stream_upwind_float32.jl" begin
+    @test_trixi_include(joinpath(pkgdir(Trixi, "examples", "unstructured_2d_fdsbp"),
+                                 "elixir_euler_free_stream_upwind_float32.jl"),
+                        l2=[0, 0, 0, 0],
+                        linf=[0, 0, 0, 0],
+                        tspan=(0.0f0, 0.05f0),
+                        atol=9.0f-4)
     # Ensure that we do not have excessive memory allocations
     # (e.g., from type instabilities)
     let

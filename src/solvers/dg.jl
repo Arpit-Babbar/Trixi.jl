@@ -12,6 +12,17 @@ function get_element_variables!(element_variables, u, mesh, equations,
     nothing
 end
 
+# Function to define "element variables" for the SaveSolutionCallback. It does
+# nothing by default, but can be specialized for certain mesh types. For instance,
+# parallel meshes output the mpi rank as an "element variable".
+function get_element_variables!(element_variables, mesh, dg, cache)
+    nothing
+end
+
+# Function to define "element variables" for the SaveSolutionCallback. It does
+# nothing by default, but can be specialized for certain volume integral types. 
+# For instance, shock capturing volume integrals output the blending factor
+# as an "element variable".
 function get_node_variables!(node_variables, mesh, equations,
                              volume_integral::AbstractVolumeIntegral, dg, cache)
     nothing
@@ -205,9 +216,6 @@ with a low-order FV method. Used with limiter [`SubcellLimiterIDP`](@ref).
     mainly because the implementation assumes that low- and high-order schemes have the same
     surface terms, which is not guaranteed for non-conforming meshes. The low-order scheme
     with a high-order mortar is not invariant domain preserving.
-
-!!! warning "Experimental implementation"
-    This is an experimental feature and may change in future releases.
 """
 struct VolumeIntegralSubcellLimiting{VolumeFluxDG, VolumeFluxFV, Limiter} <:
        AbstractVolumeIntegral
@@ -440,6 +448,7 @@ Base.summary(io::IO, dg::DG) = print(io, "DG(" * summary(dg.basis) * ")")
 function get_element_variables!(element_variables, u, mesh, equations, dg::DG, cache)
     get_element_variables!(element_variables, u, mesh, equations, dg.volume_integral,
                            dg, cache)
+    get_element_variables!(element_variables, mesh, dg, cache)
 end
 
 function get_node_variables!(node_variables, mesh, equations, dg::DG, cache)
@@ -448,7 +457,7 @@ end
 
 const MeshesDGSEM = Union{TreeMesh, StructuredMesh, StructuredMeshView,
                           UnstructuredMesh2D,
-                          P4estMesh, T8codeMesh}
+                          P4estMesh, P4estMeshView, T8codeMesh}
 
 @inline function ndofs(mesh::MeshesDGSEM, dg::DG, cache)
     nelements(cache.elements) * nnodes(dg)^ndims(mesh)
@@ -469,7 +478,7 @@ In particular, not the nodes themselves are returned.
 # `mesh` for some combinations of mesh/solver.
 @inline nelements(mesh, dg::DG, cache) = nelements(dg, cache)
 @inline function ndofsglobal(mesh, dg::DG, cache)
-    nelementsglobal(dg, cache) * nnodes(dg)^ndims(mesh)
+    nelementsglobal(mesh, dg, cache) * nnodes(dg)^ndims(mesh)
 end
 
 """
@@ -527,7 +536,7 @@ In particular, not the mortars themselves are returned.
 @inline eachmpimortar(dg::DG, cache) = Base.OneTo(nmpimortars(dg, cache))
 
 @inline nelements(dg::DG, cache) = nelements(cache.elements)
-@inline function nelementsglobal(dg::DG, cache)
+@inline function nelementsglobal(mesh, dg::DG, cache)
     mpi_isparallel() ? cache.mpi_cache.n_elements_global : nelements(dg, cache)
 end
 @inline ninterfaces(dg::DG, cache) = ninterfaces(cache.interfaces)
@@ -639,7 +648,7 @@ end
     # since LoopVectorization does not support `ForwardDiff.Dual`s. Hence, we use
     # optimized `PtrArray`s whenever possible and fall back to plain `Array`s
     # otherwise.
-    if LoopVectorization.check_args(u_ode)
+    if _PREFERENCE_POLYESTER && LoopVectorization.check_args(u_ode)
         # This version using `PtrArray`s from StrideArrays.jl is very fast and
         # does not result in allocations.
         #
@@ -673,7 +682,7 @@ end
                 nvariables(equations) * nnodes(dg)^ndims(mesh) * nelements(dg, cache)
     end
     # See comments on the DGSEM version above
-    if LoopVectorization.check_args(u_ode)
+    if _PREFERENCE_POLYESTER && LoopVectorization.check_args(u_ode)
         # Here, we do not specialize on the number of nodes using `StaticInt` since
         # - it will not be type stable (SBP operators just store it as a runtime value)
         # - FD methods tend to use high node counts

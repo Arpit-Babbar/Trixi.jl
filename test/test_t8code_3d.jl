@@ -20,6 +20,7 @@ mkdir(outdir)
             # actually is `Ptr{P4est.LibP4est.p8est_connectivity}`.
             conn = Trixi.P4est.LibP4est.p8est_connectivity_new_brick(2, 3, 4, 1, 1, 1)
             mesh = T8codeMesh(conn)
+            Trixi.p8est_connectivity_destroy(conn)
             all(size(mesh.tree_node_coordinates) .== (3, 2, 2, 2, 24))
         end
     end
@@ -61,7 +62,7 @@ mkdir(outdir)
         @test_trixi_include(joinpath(EXAMPLES_DIR, "elixir_advection_nonconforming.jl"),
                             l2=[0.00253595715323843],
                             linf=[0.016486952252155795])
-        # Ensure that we do not have excessive memory allocations 
+        # Ensure that we do not have excessive memory allocations
         # (e.g., from type instabilities)
         let
             t = sol.t[end]
@@ -77,10 +78,8 @@ mkdir(outdir)
         @test_trixi_include(joinpath(EXAMPLES_DIR, "elixir_advection_amr.jl"),
                             # Expected errors are exactly the same as with TreeMesh!
                             l2=[1.1302812803902801e-5],
-                            linf=[0.0007889950196294793],
-                            coverage_override=(maxiters = 6, initial_refinement_level = 1,
-                                               base_level = 1, med_level = 2, max_level = 3))
-        # Ensure that we do not have excessive memory allocations 
+                            linf=[0.0007889950196294793],)
+        # Ensure that we do not have excessive memory allocations
         # (e.g., from type instabilities)
         let
             t = sol.t[end]
@@ -95,12 +94,41 @@ mkdir(outdir)
     @trixi_testset "elixir_advection_amr_unstructured_curved.jl" begin
         @test_trixi_include(joinpath(EXAMPLES_DIR,
                                      "elixir_advection_amr_unstructured_curved.jl"),
-                            l2=[2.0556575425846923e-5],
-                            linf=[0.00105682693484822],
-                            tspan=(0.0, 1.0),
-                            coverage_override=(maxiters = 6, initial_refinement_level = 0,
-                                               base_level = 0, med_level = 1, max_level = 2))
-        # Ensure that we do not have excessive memory allocations 
+                            l2=[2.0535121347526814e-5],
+                            linf=[0.0010586603797777504],
+                            tspan=(0.0, 1.0),)
+        # Ensure that we do not have excessive memory allocations
+        # (e.g., from type instabilities)
+        let
+            t = sol.t[end]
+            u_ode = sol.u[end]
+            du_ode = similar(u_ode)
+            @test (@allocated Trixi.rhs!(du_ode, u_ode, semi, t)) < 1000
+        end
+    end
+
+    # This test differs from the one in `test_p4est_3d.jl` in the latitudinal and
+    # longitudinal dimensions.
+    @trixi_testset "elixir_advection_cubed_sphere.jl" begin
+        @test_trixi_include(joinpath(EXAMPLES_DIR, "elixir_advection_cubed_sphere.jl"),
+                            l2=[0.002006918015656413],
+                            linf=[0.027655117058380085])
+        # Ensure that we do not have excessive memory allocations
+        # (e.g., from type instabilities)
+        let
+            t = sol.t[end]
+            u_ode = sol.u[end]
+            du_ode = similar(u_ode)
+            @test (@allocated Trixi.rhs!(du_ode, u_ode, semi, t)) < 1000
+        end
+    end
+
+    # This test is identical to the one in `test_p4est_3d.jl`.
+    @trixi_testset "elixir_advection_restart.jl" begin
+        @test_trixi_include(joinpath(EXAMPLES_DIR, "elixir_advection_restart.jl"),
+                            l2=[0.002590388934758452],
+                            linf=[0.01840757696885409],)
+        # Ensure that we do not have excessive memory allocations
         # (e.g., from type instabilities)
         let
             t = sol.t[end]
@@ -129,7 +157,7 @@ mkdir(outdir)
                                 0.008526972236273522
                             ],
                             tspan=(0.0, 0.01))
-        # Ensure that we do not have excessive memory allocations 
+        # Ensure that we do not have excessive memory allocations
         # (e.g., from type instabilities)
         let
             t = sol.t[end]
@@ -158,7 +186,7 @@ mkdir(outdir)
                                 0.01562861968368434
                             ],
                             tspan=(0.0, 1.0))
-        # Ensure that we do not have excessive memory allocations 
+        # Ensure that we do not have excessive memory allocations
         # (e.g., from type instabilities)
         let
             t = sol.t[end]
@@ -186,7 +214,7 @@ mkdir(outdir)
                                 9.412914891981927e-12
                             ],
                             tspan=(0.0, 0.03))
-        # Ensure that we do not have excessive memory allocations 
+        # Ensure that we do not have excessive memory allocations
         # (e.g., from type instabilities)
         let
             t = sol.t[end]
@@ -214,7 +242,7 @@ mkdir(outdir)
                                 9.592326932761353e-13
                             ],
                             tspan=(0.0, 0.1), atol=5.0e-13,)
-        # Ensure that we do not have excessive memory allocations 
+        # Ensure that we do not have excessive memory allocations
         # (e.g., from type instabilities)
         let
             t = sol.t[end]
@@ -241,9 +269,8 @@ mkdir(outdir)
                                 0.45574161423218573,
                                 0.8099577682187109
                             ],
-                            tspan=(0.0, 0.2),
-                            coverage_override=(polydeg = 3,)) # Prevent long compile time in CI
-        # Ensure that we do not have excessive memory allocations 
+                            tspan=(0.0, 0.2),)
+        # Ensure that we do not have excessive memory allocations
         # (e.g., from type instabilities)
         let
             t = sol.t[end]
@@ -271,9 +298,8 @@ mkdir(outdir)
                                 3.21754792e-01,
                                 4.76151527e+00
                             ],
-                            tspan=(0.0, 0.3),
-                            coverage_override=(polydeg = 3,)) # Prevent long compile time in CI
-        # Ensure that we do not have excessive memory allocations 
+                            tspan=(0.0, 0.3),)
+        # Ensure that we do not have excessive memory allocations
         # (e.g., from type instabilities)
         let
             t = sol.t[end]
@@ -281,6 +307,107 @@ mkdir(outdir)
             du_ode = similar(u_ode)
             @test (@allocated Trixi.rhs!(du_ode, u_ode, semi, t)) < 1000
         end
+    end
+
+    @trixi_testset "elixir_euler_convergence_pure_fv.jl" begin
+        @test_trixi_include(joinpath(pkgdir(Trixi, "examples", "tree_3d_dgsem"),
+                                     "elixir_euler_convergence_pure_fv.jl"),
+                            l2=[
+                                0.037182410351406,
+                                0.032062252638283974,
+                                0.032062252638283974,
+                                0.03206225263828395,
+                                0.12228177813586687
+                            ],
+                            linf=[
+                                0.0693648413632646,
+                                0.0622101894740843,
+                                0.06221018947408474,
+                                0.062210189474084965,
+                                0.24196451799555962
+                            ],
+                            mesh=T8codeMesh((4, 4, 4), polydeg = 3,
+                                            coordinates_min = (0.0, 0.0, 0.0),
+                                            coordinates_max = (2.0, 2.0, 2.0)),
+                            # Remove SaveSolution callback
+                            callbacks=CallbackSet(summary_callback,
+                                                  analysis_callback, alive_callback,
+                                                  stepsize_callback))
+        # Ensure that we do not have excessive memory allocations
+        # (e.g., from type instabilities)
+        let
+            t = sol.t[end]
+            u_ode = sol.u[end]
+            du_ode = similar(u_ode)
+            @test (@allocated Trixi.rhs!(du_ode, u_ode, semi, t)) < 1000
+        end
+    end
+
+    # This test is identical to the one in `test_p4est_3d.jl`.
+    @trixi_testset "elixir_euler_baroclinic_instability.jl" begin
+        @test_trixi_include(joinpath(EXAMPLES_DIR,
+                                     "elixir_euler_baroclinic_instability.jl"),
+                            l2=[
+                                6.725093801700048e-7,
+                                0.00021710076010951073,
+                                0.0004386796338203878,
+                                0.00020836270267103122,
+                                0.07601887903440395
+                            ],
+                            linf=[
+                                1.9107530539574924e-5,
+                                0.02980358831035801,
+                                0.048476331898047564,
+                                0.02200137344113612,
+                                4.848310144356219
+                            ],
+                            tspan=(0.0, 1e2),
+                            # Decrease tolerance of adaptive time stepping to get similar results across different systems
+                            abstol=1.0e-9, reltol=1.0e-9,)
+        # Ensure that we do not have excessive memory allocations
+        # (e.g., from type instabilities)
+        let
+            t = sol.t[end]
+            u_ode = sol.u[end]
+            du_ode = similar(u_ode)
+            @test (@allocated Trixi.rhs!(du_ode, u_ode, semi, t)) < 1000
+        end
+    end
+
+    @trixi_testset "elixir_euler_weak_blast_wave_amr.jl" begin
+        @test_trixi_include(joinpath(EXAMPLES_DIR, "elixir_euler_weak_blast_wave_amr.jl"),
+                            l2=[
+                                0.010014531529951328,
+                                0.0176268986746271,
+                                0.01817514447099777,
+                                0.018271085903740675,
+                                0.15193033077438198
+                            ],
+                            linf=[
+                                0.2898958869606375,
+                                0.529717119064458,
+                                0.5567193302705906,
+                                0.570663236219957,
+                                3.5496520808512027
+                            ],
+                            tspan=(0.0, 0.025),)
+        # Ensure that we do not have excessive memory allocations
+        # (e.g., from type instabilities)
+        let
+            t = sol.t[end]
+            u_ode = sol.u[end]
+            du_ode = similar(u_ode)
+            @test (@allocated Trixi.rhs!(du_ode, u_ode, semi, t)) < 1000
+        end
+        # Check for conservation
+        state_integrals = Trixi.integrate(sol.u[2], semi)
+        initial_state_integrals = analysis_callback.affect!.initial_state_integrals
+
+        @test isapprox(state_integrals[1], initial_state_integrals[1], atol = 1e-13)
+        @test isapprox(state_integrals[2], initial_state_integrals[2], atol = 1e-13)
+        @test isapprox(state_integrals[3], initial_state_integrals[3], atol = 1e-13)
+        @test isapprox(state_integrals[4], initial_state_integrals[4], atol = 1e-13)
+        @test isapprox(state_integrals[5], initial_state_integrals[5], atol = 1e-13)
     end
 end
 
