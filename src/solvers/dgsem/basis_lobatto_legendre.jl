@@ -107,6 +107,12 @@ function LobattoLegendreBasis(RealT, polydeg::Integer;
                                                            filter_modal_to_N,
                                                            filter_modal_to_cutoff)
 end
+
+LobattoLegendreBasis(polydeg::Integer; polydeg_projection::Integer = 2 * polydeg, polydeg_cutoff::Integer = div(polydeg + 1, 2) - 1) = LobattoLegendreBasis(Float64,
+                                                                                                                                                            polydeg;
+                                                                                                                                                            polydeg_projection,
+                                                                                                                                                            polydeg_cutoff)
+
 LobattoLegendreBasis(polydeg::Integer) = LobattoLegendreBasis(Float64, polydeg)
 
 function Base.show(io::IO, basis::LobattoLegendreBasis)
