@@ -386,7 +386,7 @@ The term is composed of four individual non-conservative terms:
     f = zero(MVector{nvariables(equations), eltype(u_ll)})
 
     if orientation == 1
-        # Entries of Godunov-Powell term for induction equation (multiply by 2 because the non-conservative flux is 
+        # Entries of Godunov-Powell term for induction equation (multiply by 2 because the non-conservative flux is
         # multiplied by 0.5 whenever it's used in the Trixi code)
         f[1] = 2 * v1_plus_ll * B1_avg
         f[2] = 2 * v2_plus_ll * B1_avg
@@ -422,17 +422,17 @@ The term is composed of four individual non-conservative terms:
             # Compute GLM term for the energy
             f5 += v1_plus_ll * psi_ll * psi_avg
 
-            # Add to the flux vector (multiply by 2 because the non-conservative flux is 
+            # Add to the flux vector (multiply by 2 because the non-conservative flux is
             # multiplied by 0.5 whenever it's used in the Trixi code)
             set_component!(f, k, 0, 2 * f2, 2 * f3, 2 * f4, 2 * f5,
                            equations)
         end
-        # Compute GLM term for psi (multiply by 2 because the non-conservative flux is 
+        # Compute GLM term for psi (multiply by 2 because the non-conservative flux is
         # multiplied by 0.5 whenever it's used in the Trixi code)
         f[end] = 2 * v1_plus_ll * psi_avg
 
     else #if orientation == 2
-        # Entries of Godunov-Powell term for induction equation (multiply by 2 because the non-conservative flux is 
+        # Entries of Godunov-Powell term for induction equation (multiply by 2 because the non-conservative flux is
         # multiplied by 0.5 whenever it's used in the Trixi code)
         f[1] = 2 * v1_plus_ll * B2_avg
         f[2] = 2 * v2_plus_ll * B2_avg
@@ -469,12 +469,12 @@ The term is composed of four individual non-conservative terms:
             # Compute GLM term for the energy
             f5 += v2_plus_ll * psi_ll * psi_avg
 
-            # Add to the flux vector (multiply by 2 because the non-conservative flux is 
+            # Add to the flux vector (multiply by 2 because the non-conservative flux is
             # multiplied by 0.5 whenever it's used in the Trixi code)
             set_component!(f, k, 0, 2 * f2, 2 * f3, 2 * f4, 2 * f5,
                            equations)
         end
-        # Compute GLM term for psi (multiply by 2 because the non-conservative flux is 
+        # Compute GLM term for psi (multiply by 2 because the non-conservative flux is
         # multiplied by 0.5 whenever it's used in the Trixi code)
         f[end] = 2 * v2_plus_ll * psi_avg
     end
@@ -520,7 +520,7 @@ The term is composed of four individual non-conservative terms:
     mag_norm_ll = B1_ll^2 + B2_ll^2 + B3_ll^2
     mag_norm_rr = B1_rr^2 + B2_rr^2 + B3_rr^2
 
-    # Electron pressure 
+    # Electron pressure
     pe_ll = equations.electron_pressure(u_ll, equations)
     pe_rr = equations.electron_pressure(u_rr, equations)
 
@@ -873,7 +873,7 @@ function flux_ruedaramirez_etal(u_ll, u_rr, orientation::Integer,
 end
 
 # Calculate maximum wave speed for local Lax-Friedrichs-type dissipation
-# This routine approximates the maximum wave speed as sum of the maximum ion velocity 
+# This routine approximates the maximum wave speed as sum of the maximum ion velocity
 # for all species and the maximum magnetosonic speed.
 @inline function max_abs_speed_naive(u_ll, u_rr, orientation::Integer,
                                      equations::IdealGlmMhdMultiIonEquations2D)
@@ -951,9 +951,9 @@ end
     return (abs(v1) + cf_x_direction, abs(v2) + cf_y_direction)
 end
 
-# Compute the fastest wave speed for ideal multi-ion GLM-MHD equations: c_f, the fast 
+# Compute the fastest wave speed for ideal multi-ion GLM-MHD equations: c_f, the fast
 # magnetoacoustic eigenvalue. This routine computes the fast magnetosonic speed for each ion
-# species using the single-fluid MHD expressions and approximates the multi-ion c_f as 
+# species using the single-fluid MHD expressions and approximates the multi-ion c_f as
 # the maximum of these individual magnetosonic speeds.
 @inline function calc_fast_wavespeed(cons, orientation::Integer,
                                      equations::IdealGlmMhdMultiIonEquations2D)
