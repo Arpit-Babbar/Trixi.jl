@@ -11,7 +11,7 @@
 The ideal compressible GLM-MHD equations for an ideal gas with ratio of
 specific heats `gamma` in two space dimensions.
 """
-struct IdealGlmMhdEquations2D{RealT <: Real} <:
+mutable struct IdealGlmMhdEquations2D{RealT <: Real} <:
        AbstractIdealGlmMhdEquations{2, 9}
     gamma::RealT               # ratio of specific heats
     inv_gamma_minus_one::RealT # = inv(gamma - 1); can be used to write slow divisions as fast multiplications
