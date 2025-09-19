@@ -96,6 +96,7 @@ function update_cleaning_speed!(semi, glm_speed_callback, dt, t)
     # We use @reset here since the equations are immutable (to work on GPUs etc.).
     # Thus, we need to modify the equations field of the semidiscretization.
     @reset equations.c_h = glm_scale * c_h_deltat / dt
+    @show equations.c_h
     semi.equations = equations
 
     return semi
