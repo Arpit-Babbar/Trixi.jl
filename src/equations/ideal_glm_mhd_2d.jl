@@ -46,7 +46,7 @@ p = (\gamma - 1) \left( \rho e - \frac{1}{2} \rho \Vert \mathbf{v} \Vert_2 ^2 - 
 ```
 the pressure, ``\gamma`` the total heat capacity ratio and ``\underline{I}`` the ``3\times 3`` identity matrix.
 """
-struct IdealGlmMhdEquations2D{RealT <: Real} <:
+mutable struct IdealGlmMhdEquations2D{RealT <: Real} <:
        AbstractIdealGlmMhdEquations{2, 9}
     gamma::RealT               # ratio of specific heats
     inv_gamma_minus_one::RealT # = inv(gamma - 1); can be used to write slow divisions as fast multiplications
